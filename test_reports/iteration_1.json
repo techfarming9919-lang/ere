@@ -1,0 +1,27 @@
+{
+  "summary": "Backend-only testing of the user-selectable Financial Year feature on the GP Profile Crawler API. Created pytest suite at /app/backend/tests/test_fy_selection.py covering 8 tests. All 8 PASSED against the public REACT_APP_BACKEND_URL. Verified: GET /api/config returns financial_year/label/value + crawler; POST /api/financial-year with (2324,'2023 - 2024') and (2526,'2025 - 2026') correctly derives labels '2023-2024' and '2025-2026' via whitespace stripping; GET /api/config and GET /api/summary reflect the newly set FY; GET /api/export?scope=all returns a valid .xlsx file whose Content-Disposition filename uses the current FY (e.g. GP_Contact_Data_2025-2026.xlsx); GET /api/records, /api/errors, /api/crawl/status return valid JSON with state='idle'; POST /api/reset returns {ok:true} when idle. FY restored to default 2425/'2024 - 2025' at end via module teardown.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/crawl/stop", "issue": "When the crawler worker is blocked on the (unreachable) live site, /api/crawl/stop returns {ok:true} but the state remains 'stopping' indefinitely — only a backend restart clears it. Non-blocking on this environment but a transition-timeout / forceful task cancellation would make the API more robust. Pre-existing, not caused by the FY-selection change."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_fy_selection.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py /api/export: Filename suffixing uses base.replace('.xlsx', f'_{scope}.xlsx') which would silently misbehave if excel_filename() ever lacks '.xlsx'. Minor robustness nit.",
+    "crawler stop path can leave manager.state='stopping' permanently when the worker is blocked on an unreachable host — consider a hard-cancel with timeout. Out of scope for the FY feature."
+  ],
+  "updated_files": ["/app/backend/tests/test_fy_selection.py"],
+  "success_rate": {"backend": "100%", "frontend": "N/A (not requested)"},
+  "test_credentials": "None (no auth in this app).",
+  "seed_data_creation": "None. Tests do not insert records; they only toggle FY and read endpoints.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "pytest.ini forces -n 2 --dist loadscope. Use `-n 0` to run tests serially when a suite needs ordered FY state. If the public URL returns timeouts, the crawler may be stuck in state='stopping' (because live site gpims.wb.gov.in is firewalled from the container) — restart backend via supervisorctl to clear. Live-site endpoints (/api/analyze, /discover, /test-gp, /crawl/start, /crawl/retry-failed, /financial-years) must NOT be exercised in this env.",
+  "rca of the issue": "N/A — no failing tests after setup. Initial public-URL timeout was due to a leftover crawl task from a prior session that put the manager into state='running'; a backend supervisor restart cleared the stuck Playwright task and all tests then passed in 1.5s."
+}
