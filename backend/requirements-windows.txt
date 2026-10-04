@@ -1,0 +1,7 @@
+# Minimal, Windows-friendly dependencies for the GP Profile Crawler.
+# Use with Python 3.12 (recommended). No MongoDB / uvloop needed.
+fastapi>=0.110,<0.116
+uvicorn>=0.25,<0.31
+python-dotenv>=1.0
+playwright>=1.44,<1.56
+openpyxl>=3.1
